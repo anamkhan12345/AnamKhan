@@ -34,6 +34,7 @@ df['total'] = df['A'] + df['B']  # Create new column
 
 ```python
 df.describe()        # Statistical summary
+df.columns           # Column labels
 df.mean()            # Mean of each column
 df.median()          # Median of each column
 df.min()             # Minimum of each column
