@@ -54,7 +54,6 @@ percent_change_airports =  ( (old_airports - new_airports) / old_airports ) * 10
 percent_change_airports = percent_change_airports[percent_change_airports > 1]
 print("Airport with most change: ", percent_change_airports.idxmax())
 print("Airport change percentage: ", percent_change_airports.max())
-
 if debug_explore:
     plt.bar(percent_change_airports.index, percent_change_airports)
     plt.xlabel('Airports')
@@ -66,10 +65,8 @@ if debug_explore:
     plt.show()
 
 # Worst is for Mobile (AL), a 8.5% drop, I think it's ok
-breakpoint()
+df = df_dropped
 
-# Replace NaN with missing
-missing = missing.fillna('missing')
 # TODO: More Data Cleaning - set up dates in correct time format
 # TODO: More Data Cleaning - scaling or normalizing data?
 
