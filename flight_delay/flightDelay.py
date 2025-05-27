@@ -18,10 +18,14 @@ if debug_explore:
     print("**********")
 
 # Clean the data up - find any missing values or incomplete values
-total_data = np.prod(df.shape)
+total_cells = np.prod(df.shape)
 missing = df[df.isnull().any(axis=1)]
 missing_sum = df.isnull().sum()
+total_missing = missing_sum.sum()
+percent_missing = (total_missing/total_cells) * 100
 missing = missing.fillna('missing')
+missing_carriers_list = missing.carrier_name.value_counts().index.tolist()
+all_missing_carriers_data = df[df.carrier_name.isin(missing_carriers_list)]
 
 # Find if all 240 missing values are for the same rows....
 missing_sum = missing_sum[missing_sum == 240].index.tolist()
@@ -30,6 +34,7 @@ common_miss = common_miss[common_miss.isnull().any(axis=1)]
 same_miss = (common_miss.nunique(axis=1) == 1)
 all_rows_same = same_miss.nunique() == 1
 
+breakpoint()
 # I want to know the worst airports to fly into on average over the entire data timeframe
 worst_carrier_delays = df.groupby(['airport','airport_name'])['carrier_delay'].mean() # TODO: Probably need to take into account total delays to total arrivals
 worst_carrier_delays = worst_carrier_delays.sort_values(ascending=False)

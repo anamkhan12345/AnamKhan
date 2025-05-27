@@ -28,6 +28,7 @@ df.loc[0:5, ['col1', 'col2']]    # Rows 0-5, specific columns
 ```python
 df[df['col'] > 50]               # Filter rows where col > 50
 df['total'] = df['A'] + df['B']  # Create new column
+df[df.carrier_name.isin(missing_carriers_list)] # Filter column data based on values in a list
 ```
 
 ## 3. Summary Functions and Maps
