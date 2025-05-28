@@ -74,15 +74,28 @@ print("Duplicated rows: ", dupes) # None, so good to move on
 df['combined_date'] = pd.to_datetime(df['month'].astype(str) + '-' + df['year'].astype(str), format='%m-%Y') 
 df = df.drop(['month', 'year'], axis=1)
 df = df[['combined_date'] + [col for col in df.columns if col != 'combined_date']]
-print(df.head())
-breakpoint()
-# TODO: More Data Cleaning - scaling or normalizing data?
 
+# TODO: More Data Cleaning - scaling or normalizing data?
+#   1) Figure out if my features follow a normal distribution or not
+#   2) Pick the columns with numerical values
+#   3) Apply the correct scaling techniqut to them all
+numeric_cols = df.select_dtypes(include='number').columns
+
+if debug_explore:
+    for col in numeric_cols:
+        plt.figure(figsize=(6, 4))
+        df[col].hist(bins=30, edgecolor='black')
+        plt.title(f'Histogram of {col}')
+        plt.xlabel(col)
+        plt.ylabel('Frequency')
+        plt.tight_layout()
+        plt.show()
+
+# After inspecting each features histogram, I don't think,
+# any of them follow a normal distribution. Therefore, I 
+# should use MinMaxScaler for my scaling type.
 
 # I want to know the worst airports to fly into on average over the entire data timeframe
-worst_carrier_delays = df.groupby(['airport','airport_name'])['carrier_delay'].mean() # TODO: Probably need to take into account total delays to total arrivals
-worst_carrier_delays = worst_carrier_delays.sort_values(ascending=False)
-#print(worst_carrier_delays.head())
 
 # I want to know for each month, which is the worst airport to fly into
 #   - what are the top 3 worst carriers on those months
