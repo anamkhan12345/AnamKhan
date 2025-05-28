@@ -10,7 +10,6 @@ df = pd.read_csv("../../dataSets/airline-delay/Airline_Delay_Cause.csv")
 sample = df[ (df['month'] == 2) & (df['year'] == 2016) ]
 sample = sample.sort_values(['airport'])
 american = df[ (df['carrier'] == 'AA')]
-
 if debug_explore:
     print("View of American Arrivals to airpots")
     print(american.head())
@@ -29,7 +28,7 @@ print("Percent Missing: ", percent_cells_missing)
 # Figure out how many % of rows are removed
 df_dropped = df.dropna()
 percent_rows_dropped = ( df_dropped.shape[0] / df.shape[0] ) * 100
-print(" Percent of original df after rows dropped: ", percent_rows_dropped)
+print("Percent of original df after rows dropped: ", percent_rows_dropped)
 
 # Does the dropped data effect specific carriers more than others?
 old_carriers = df.carrier_name.value_counts()
@@ -67,7 +66,16 @@ if debug_explore:
 # Worst is for Mobile (AL), a 8.5% drop, I think it's ok
 df = df_dropped
 
-# TODO: More Data Cleaning - set up dates in correct time format
+# More Data Cleaning - Duplicate rows?
+dupes = df.duplicated().sum()
+print("Duplicated rows: ", dupes) # None, so good to move on
+
+# More Data Cleaning - set up dates in correct time format
+df['combined_date'] = pd.to_datetime(df['month'].astype(str) + '-' + df['year'].astype(str), format='%m-%Y') 
+df = df.drop(['month', 'year'], axis=1)
+df = df[['combined_date'] + [col for col in df.columns if col != 'combined_date']]
+print(df.head())
+breakpoint()
 # TODO: More Data Cleaning - scaling or normalizing data?
 
 
