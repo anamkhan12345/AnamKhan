@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
 import pdb
 
 
@@ -36,6 +37,8 @@ new_carriers = df_dropped.carrier_name.value_counts()
 percent_change_carriers =  ( (old_carriers - new_carriers) / old_carriers ) * 100
 print("Carrier with most change: ", percent_change_carriers.idxmax())
 print("Carrier change percentage: ", percent_change_carriers.max())
+print("Carrier impact summary: ", percent_change_carriers.describe())
+
 if debug_explore:
     plt.bar(percent_change_carriers.index, percent_change_carriers)
     plt.xlabel('Carriers')
@@ -53,6 +56,7 @@ percent_change_airports =  ( (old_airports - new_airports) / old_airports ) * 10
 percent_change_airports = percent_change_airports[percent_change_airports > 1]
 print("Airport with most change: ", percent_change_airports.idxmax())
 print("Airport change percentage: ", percent_change_airports.max())
+
 if debug_explore:
     plt.bar(percent_change_airports.index, percent_change_airports)
     plt.xlabel('Airports')
@@ -81,6 +85,8 @@ df = df[['combined_date'] + [col for col in df.columns if col != 'combined_date'
 #   3) Apply the correct scaling techniqut to them all
 numeric_cols = df.select_dtypes(include='number').columns
 
+
+
 if debug_explore:
     for col in numeric_cols:
         plt.figure(figsize=(6, 4))
@@ -94,7 +100,19 @@ if debug_explore:
 # After inspecting each features histogram, I don't think,
 # any of them follow a normal distribution. Therefore, I 
 # should use MinMaxScaler for my scaling type.
+scaler = MinMaxScaler()
+scaled_df = df.copy()
+scaled_df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
 
+# Compute composit score per row
+scaled_df['impact_score'] = scaled_df[numeric_cols].sum(axis=1)
+carrier_delay_scores = scaled_df.groupby('carrier_name')['impact_score'].mean().sort_values(ascending=False)
+airport_delay_scores = scaled_df.groupby('airport_name')['impact_score'].mean().sort_values(ascending=False)
+
+print("Worst airport on average from 2013 - 2023: ", airport_delay_scores.idxmax())
+print("Worst carrier on average from 2013 - 2023: ", carrier_delay_scores.idxmax())
+
+breakpoint()
 # I want to know the worst airports to fly into on average over the entire data timeframe
 
 # I want to know for each month, which is the worst airport to fly into
