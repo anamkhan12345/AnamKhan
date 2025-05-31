@@ -125,16 +125,12 @@ fig = px.scatter_geo(
     lon='longitude_deg',
     text='iata_code',
     size='impact_score',  # Bubble size based on value
+    color='impact_score',       # color gradient
+    color_continuous_scale='Viridis',  # or 'Plasma', 'Inferno', 'Turbo', etc.
     projection='albers usa',
     title='Bubble Chart of U.S. Airport Average Delay times from 2013- 2023',
     scope='usa'
 )
 
-fig.update_traces(marker=dict(color='skyblue', line=dict(width=1, color='black')))
+#fig.update_traces(marker=dict(color='skyblue', line=dict(width=1, color='black')))
 fig.show()
-
-# I want to know for each month, which is the worst airport to fly into
-#   - what are the top 3 worst carriers on those months
-
-# I want to know the worst carriers on average
-
