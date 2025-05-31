@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
+import plotly.express as px
 import pdb
 
 
@@ -79,13 +80,8 @@ df['combined_date'] = pd.to_datetime(df['month'].astype(str) + '-' + df['year'].
 df = df.drop(['month', 'year'], axis=1)
 df = df[['combined_date'] + [col for col in df.columns if col != 'combined_date']]
 
-# TODO: More Data Cleaning - scaling or normalizing data?
-#   1) Figure out if my features follow a normal distribution or not
-#   2) Pick the columns with numerical values
-#   3) Apply the correct scaling techniqut to them all
+# More Data Cleaning - scaling or normalizing data?
 numeric_cols = df.select_dtypes(include='number').columns
-
-
 
 if debug_explore:
     for col in numeric_cols:
@@ -106,14 +102,36 @@ scaled_df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
 
 # Compute composit score per row
 scaled_df['impact_score'] = scaled_df[numeric_cols].sum(axis=1)
+
+# I want to know the worst airports to fly into on average over the entire data timeframe
+scaled_df.rename(columns={'airport': 'iata_code'}, inplace=True)
 carrier_delay_scores = scaled_df.groupby('carrier_name')['impact_score'].mean().sort_values(ascending=False)
-airport_delay_scores = scaled_df.groupby('airport_name')['impact_score'].mean().sort_values(ascending=False)
+airport_delay_scores = scaled_df.groupby(['iata_code'])['impact_score'].mean().sort_values(ascending=False)
 
 print("Worst airport on average from 2013 - 2023: ", airport_delay_scores.idxmax())
 print("Worst carrier on average from 2013 - 2023: ", carrier_delay_scores.idxmax())
+plt_cols = ['airport_name', 'iata_code', 'latitude_deg', 'longitude_deg', 'impact_score']
 
-breakpoint()
-# I want to know the worst airports to fly into on average over the entire data timeframe
+# Combine lat long data
+df_loc = pd.read_csv(r"C:\Users\anamk\projects\dataSets\airline-delay\airports_lat_long.csv")
+merge_cols = ['iata_code', 'latitude_deg', 'longitude_deg']
+df_delay = airport_delay_scores.to_frame()
+df_merged = pd.merge(df_delay, df_loc[merge_cols], on='iata_code', how='left')
+
+# Create bubble map
+fig = px.scatter_geo(
+    df_merged,
+    lat='latitude_deg',
+    lon='longitude_deg',
+    text='iata_code',
+    size='impact_score',  # Bubble size based on value
+    projection='albers usa',
+    title='Bubble Chart of U.S. Airport Average Delay times from 2013- 2023',
+    scope='usa'
+)
+
+fig.update_traces(marker=dict(color='skyblue', line=dict(width=1, color='black')))
+fig.show()
 
 # I want to know for each month, which is the worst airport to fly into
 #   - what are the top 3 worst carriers on those months
