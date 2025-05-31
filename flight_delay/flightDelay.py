@@ -132,5 +132,4 @@ fig = px.scatter_geo(
     scope='usa'
 )
 
-#fig.update_traces(marker=dict(color='skyblue', line=dict(width=1, color='black')))
 fig.show()
