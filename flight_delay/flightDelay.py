@@ -1,9 +1,11 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
+import seaborn as sns
 import plotly.express as px
 import pdb
+from sklearn.preprocessing import MinMaxScaler
+
 
 
 # Explore Data
@@ -79,9 +81,11 @@ print("Duplicated rows: ", dupes) # None, so good to move on
 df['combined_date'] = pd.to_datetime(df['month'].astype(str) + '-' + df['year'].astype(str), format='%m-%Y') 
 df = df.drop(['month', 'year'], axis=1)
 df = df[['combined_date'] + [col for col in df.columns if col != 'combined_date']]
+df['Year'] = df['combined_date'].dt.year
 
 # More Data Cleaning - scaling or normalizing data?
 numeric_cols = df.select_dtypes(include='number').columns
+numeric_cols = numeric_cols.drop(['Year'])
 
 if debug_explore:
     for col in numeric_cols:
@@ -111,6 +115,23 @@ airport_delay_scores = scaled_df.groupby(['iata_code'])['impact_score'].mean().s
 print("Worst airport on average from 2013 - 2023: ", airport_delay_scores.idxmax())
 print("Worst carrier on average from 2013 - 2023: ", carrier_delay_scores.idxmax())
 plt_cols = ['airport_name', 'iata_code', 'latitude_deg', 'longitude_deg', 'impact_score']
+
+# ORD Bar Chart 
+dfORD = scaled_df[scaled_df['iata_code'] == 'ORD']
+avg_score_per_year = dfORD.groupby('Year')['impact_score'].mean().reset_index()
+
+plt.figure()
+plt.title('ORD delay over time')
+sns.barplot(x=avg_score_per_year.Year, y = avg_score_per_year.impact_score)
+plt.ylabel('Delay Impact Score (scaled)')
+plt.show()
+
+# Heatmap
+pivot = scaled_df.pivot_table(index='carrier_name', columns='Year', values='impact_score', aggfunc='mean')
+plt.figure()
+plt.title('Average Delay Score per airline over time')
+sns.heatmap(data=pivot, annot=True, cmap='Reds')
+plt.show()
 
 # Combine lat long data
 df_loc = pd.read_csv(r"C:\Users\anamk\projects\dataSets\airline-delay\airports_lat_long.csv")
