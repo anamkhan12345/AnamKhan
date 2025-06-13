@@ -6,8 +6,6 @@ import plotly.express as px
 import pdb
 from sklearn.preprocessing import MinMaxScaler
 
-
-
 # Explore Data
 debug_explore = False
 df = pd.read_csv("../../dataSets/airline-delay/Airline_Delay_Cause.csv")
