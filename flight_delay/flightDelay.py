@@ -6,6 +6,41 @@ import plotly.express as px
 import pdb
 from sklearn.preprocessing import MinMaxScaler
 
+
+def group_delay_scaled(feature, df):
+    group = df.groupby(feature).agg(
+        TOTAL_FLIGHTS_count = ('arr_flights', 'sum'),
+        TOTAL_ARR_DELAY_count = ('arr_del15', 'sum'),
+        AVG_ARR_DELAY_mins = ('arr_delay', 'mean'),
+        NUM_CANCELLED_count = ('arr_cancelled', 'sum'),
+        NUM_DIVERTED_count = ('arr_diverted', 'sum')
+    )
+
+    # Step 3: Calculate derived metrics
+    group['CANCEL_RATE'] = group['NUM_CANCELLED_count'] / group['TOTAL_FLIGHTS_count']
+    group['DIVERT_RATE'] = group['NUM_DIVERTED_count'] / group['TOTAL_FLIGHTS_count']
+    group['DELAY_PER_FLIGHT'] = group['TOTAL_ARR_DELAY_count'] / group['TOTAL_FLIGHTS_count']
+
+
+    # Scale all 4 bad-performance indicators
+    scaler = MinMaxScaler()
+    metrics = ['AVG_ARR_DELAY_mins', 'CANCEL_RATE', 'DIVERT_RATE', 'DELAY_PER_FLIGHT']
+    scaled_vars = ['S_ARR_DELAY_15', 'S_CANCEL', 'S_DIVERT', 'S_DELAY_PER_FLIGHT']
+    scaled_metrics = scaler.fit_transform(group[metrics])
+    group[scaled_vars] = scaled_metrics
+
+    group['COMPOSITE_SCORE'] = (
+        .4 * group['S_ARR_DELAY_15'] +
+        .3 * group['S_DELAY_PER_FLIGHT'] +
+        .2 * group['S_CANCEL'] +
+        .1 * group['S_DIVERT']
+    )
+
+    top5_worst = group.sort_values('COMPOSITE_SCORE', ascending=False).head(5)
+    print(top5_worst)
+
+    return group
+
 # Explore Data
 debug_explore = False
 df = pd.read_csv("../../dataSets/airline-delay/Airline_Delay_Cause.csv")
@@ -36,9 +71,6 @@ print("Percent of original df after rows dropped: ", percent_rows_dropped)
 old_carriers = df.carrier_name.value_counts()
 new_carriers = df_dropped.carrier_name.value_counts()
 percent_change_carriers =  ( (old_carriers - new_carriers) / old_carriers ) * 100
-print("Carrier with most change: ", percent_change_carriers.idxmax())
-print("Carrier change percentage: ", percent_change_carriers.max())
-print("Carrier impact summary: ", percent_change_carriers.describe())
 
 if debug_explore:
     plt.bar(percent_change_carriers.index, percent_change_carriers)
@@ -95,60 +127,46 @@ if debug_explore:
         plt.tight_layout()
         plt.show()
 
-# After inspecting each features histogram, I don't think,
-# any of them follow a normal distribution. Therefore, I 
-# should use MinMaxScaler for my scaling type.
-scaler = MinMaxScaler()
-scaled_df = df.copy()
-scaled_df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
+# Focus on arrival dealys to track airline and airport performance
+carrier_group = group_delay_scaled('carrier_name', df).reset_index()
+airport_group = group_delay_scaled('airport', df).reset_index()
+airport_group.rename(columns={'airport': 'iata_code'}, inplace=True)
 
-# Compute composit score per row
-scaled_df['impact_score'] = scaled_df[numeric_cols].sum(axis=1)
-
-# I want to know the worst airports to fly into on average over the entire data timeframe
-scaled_df.rename(columns={'airport': 'iata_code'}, inplace=True)
-carrier_delay_scores = scaled_df.groupby('carrier_name')['impact_score'].mean().sort_values(ascending=False)
-airport_delay_scores = scaled_df.groupby(['iata_code'])['impact_score'].mean().sort_values(ascending=False)
-
-print("Worst airport on average from 2013 - 2023: ", airport_delay_scores.idxmax())
-print("Worst carrier on average from 2013 - 2023: ", carrier_delay_scores.idxmax())
-plt_cols = ['airport_name', 'iata_code', 'latitude_deg', 'longitude_deg', 'impact_score']
-
-# ORD Bar Chart 
-dfORD = scaled_df[scaled_df['iata_code'] == 'ORD']
-avg_score_per_year = dfORD.groupby('Year')['impact_score'].mean().reset_index()
-
-plt.figure()
-plt.title('ORD delay over time')
-sns.barplot(x=avg_score_per_year.Year, y = avg_score_per_year.impact_score)
-plt.ylabel('Delay Impact Score (scaled)')
-plt.show()
-
-# Heatmap
-pivot = scaled_df.pivot_table(index='carrier_name', columns='Year', values='impact_score', aggfunc='mean')
-plt.figure()
-plt.title('Average Delay Score per airline over time')
-sns.heatmap(data=pivot, annot=True, cmap='Reds')
-plt.show()
+plt_cols = ['airport_name', 'iata_code', 'latitude_deg', 'longitude_deg', 'COMPOSITE_SCORE']
 
 # Combine lat long data
 df_loc = pd.read_csv(r"C:\Users\anamk\projects\dataSets\airline-delay\airports_lat_long.csv")
 merge_cols = ['iata_code', 'latitude_deg', 'longitude_deg']
-df_delay = airport_delay_scores.to_frame()
-df_merged = pd.merge(df_delay, df_loc[merge_cols], on='iata_code', how='left')
+df_merged = pd.merge(airport_group, df_loc[merge_cols], on='iata_code', how='left')
 
 # Create bubble map
 fig = px.scatter_geo(
-    df_merged,
-    lat='latitude_deg',
-    lon='longitude_deg',
-    text='iata_code',
-    size='impact_score',  # Bubble size based on value
-    color='impact_score',       # color gradient
-    color_continuous_scale='Viridis',  # or 'Plasma', 'Inferno', 'Turbo', etc.
-    projection='albers usa',
-    title='Bubble Chart of U.S. Airport Average Delay times from 2013- 2023',
-    scope='usa'
-)
-
+        df_merged,
+        lat='latitude_deg',
+        lon='longitude_deg',
+        text='iata_code',
+        size='COMPOSITE_SCORE',  # Bubble size based on value
+        color='COMPOSITE_SCORE',       # color gradient
+        color_continuous_scale='Viridis',  # or 'Plasma', 'Inferno', 'Turbo', etc.
+        projection='albers usa',
+        title='Bubble Chart of U.S. Airport Average Delay times from 2013- 2023',
+        scope='usa'
+    )
 fig.show()
+
+#if debug_explore:
+    # # ORD Bar Chart 
+    # dfORD = scaled_df[scaled_df['iata_code'] == 'ORD']
+    # avg_score_per_year = dfORD.groupby('Year')['impact_score'].mean().reset_index()
+    # plt.figure()
+    # plt.title('ORD delay over time')
+    # sns.barplot(x=avg_score_per_year.Year, y = avg_score_per_year.impact_score)
+    # plt.ylabel('Delay Impact Score (scaled)')
+    # plt.show()
+
+    # # Heatmap
+    # pivot = scaled_df.pivot_table(index='carrier_name', columns='Year', values='impact_score', aggfunc='mean')
+    # plt.figure()
+    # plt.title('Average Delay Score per airline over time')
+    # sns.heatmap(data=pivot, annot=True, cmap='Reds')
+    # plt.show()
