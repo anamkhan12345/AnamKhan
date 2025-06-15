@@ -47,12 +47,6 @@ df = pd.read_csv("../../dataSets/airline-delay/Airline_Delay_Cause.csv")
 sample = df[ (df['month'] == 2) & (df['year'] == 2016) ]
 sample = sample.sort_values(['airport'])
 american = df[ (df['carrier'] == 'AA')]
-if debug_explore:
-    print("View of American Arrivals to airpots")
-    print(american.head())
-    print("Looking at all arrivals in the 2/2016")
-    print(sample.head())
-    print("**********")
 
 # Figure out the percentage of missing cells to total cells
 missing = df[df.isnull().any(axis=1)]
@@ -72,15 +66,6 @@ old_carriers = df.carrier_name.value_counts()
 new_carriers = df_dropped.carrier_name.value_counts()
 percent_change_carriers =  ( (old_carriers - new_carriers) / old_carriers ) * 100
 
-if debug_explore:
-    plt.bar(percent_change_carriers.index, percent_change_carriers)
-    plt.xlabel('Carriers')
-    plt.ylabel('Percent Change')
-    plt.title('Percent Change of Carriers')
-    plt.xticks(fontsize=6)
-    plt.xticks(rotation=90)
-    plt.tight_layout()
-    plt.show()
 
 # Does the dropped data effect specific airports more than others?
 old_airports = df.airport_name.value_counts()
@@ -89,16 +74,6 @@ percent_change_airports =  ( (old_airports - new_airports) / old_airports ) * 10
 percent_change_airports = percent_change_airports[percent_change_airports > 1]
 print("Airport with most change: ", percent_change_airports.idxmax())
 print("Airport change percentage: ", percent_change_airports.max())
-
-if debug_explore:
-    plt.bar(percent_change_airports.index, percent_change_airports)
-    plt.xlabel('Airports')
-    plt.ylabel('Percent Change')
-    plt.title('Percent Change of Airports')
-    plt.xticks(fontsize=6)
-    plt.xticks(rotation=90)
-    plt.tight_layout()
-    plt.show()
 
 # Worst is for Mobile (AL), a 8.5% drop, I think it's ok
 df = df_dropped
@@ -113,19 +88,35 @@ df = df.drop(['month', 'year'], axis=1)
 df = df[['combined_date'] + [col for col in df.columns if col != 'combined_date']]
 df['Year'] = df['combined_date'].dt.year
 
-# More Data Cleaning - scaling or normalizing data?
-numeric_cols = df.select_dtypes(include='number').columns
-numeric_cols = numeric_cols.drop(['Year'])
+# Data Exploration 
 
-if debug_explore:
-    for col in numeric_cols:
-        plt.figure(figsize=(6, 4))
-        df[col].hist(bins=30, edgecolor='black')
-        plt.title(f'Histogram of {col}')
-        plt.xlabel(col)
-        plt.ylabel('Frequency')
-        plt.tight_layout()
-        plt.show()
+# Heatmap
+# pivot = df.pivot_table(index='carrier_name', columns='Year', values='arr_del15', aggfunc='mean')
+# plt.figure()
+# plt.title('Average Number of Delayed Flights')
+# sns.heatmap(data=pivot, annot=True, cmap='Reds')
+# plt.show()
+
+# Line Plot
+# plt.figure()
+# sns.lineplot(data=df, x='Year', y='arr_del15', hue='carrier')  # Multiple groups
+# plt.tight_layout()
+# plt.show()
+
+# Plot stacked bars of scaled components
+delay_components = df.groupby('carrier_name')[['carrier_ct', 'weather_ct', 'nas_ct', 'security_ct', 'late_aircraft_ct']].sum()
+delay_components.plot(
+    kind='barh',
+    stacked=True,
+    figsize=(10, 6),
+)
+
+plt.title('Breakdown of Delay causes')
+plt.xlabel('Scaled Score Contribution')
+plt.ylabel('Airline')
+plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+plt.tight_layout()
+plt.show()
 
 # Focus on arrival dealys to track airline and airport performance
 carrier_group = group_delay_scaled('carrier_name', df).reset_index()
@@ -140,19 +131,19 @@ merge_cols = ['iata_code', 'latitude_deg', 'longitude_deg']
 df_merged = pd.merge(airport_group, df_loc[merge_cols], on='iata_code', how='left')
 
 # Create bubble map
-fig = px.scatter_geo(
-        df_merged,
-        lat='latitude_deg',
-        lon='longitude_deg',
-        text='iata_code',
-        size='COMPOSITE_SCORE',  # Bubble size based on value
-        color='COMPOSITE_SCORE',       # color gradient
-        color_continuous_scale='Viridis',  # or 'Plasma', 'Inferno', 'Turbo', etc.
-        projection='albers usa',
-        title='Bubble Chart of U.S. Airport Average Delay times from 2013- 2023',
-        scope='usa'
-    )
-fig.show()
+# fig = px.scatter_geo(
+#         df_merged,
+#         lat='latitude_deg',
+#         lon='longitude_deg',
+#         text='iata_code',
+#         size='COMPOSITE_SCORE',  # Bubble size based on value
+#         color='COMPOSITE_SCORE',       # color gradient
+#         color_continuous_scale='Viridis',  # or 'Plasma', 'Inferno', 'Turbo', etc.
+#         projection='albers usa',
+#         title='Bubble Chart of U.S. Airport Average Delay times from 2013- 2023',
+#         scope='usa'
+#     )
+# fig.show()
 
 #if debug_explore:
     # # ORD Bar Chart 
@@ -164,9 +155,3 @@ fig.show()
     # plt.ylabel('Delay Impact Score (scaled)')
     # plt.show()
 
-    # # Heatmap
-    # pivot = scaled_df.pivot_table(index='carrier_name', columns='Year', values='impact_score', aggfunc='mean')
-    # plt.figure()
-    # plt.title('Average Delay Score per airline over time')
-    # sns.heatmap(data=pivot, annot=True, cmap='Reds')
-    # plt.show()
