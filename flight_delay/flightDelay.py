@@ -21,7 +21,6 @@ def group_delay_scaled(feature, df):
     group['DIVERT_RATE'] = group['NUM_DIVERTED_count'] / group['TOTAL_FLIGHTS_count']
     group['DELAY_PER_FLIGHT'] = group['TOTAL_ARR_DELAY_count'] / group['TOTAL_FLIGHTS_count']
 
-
     # Scale all 4 bad-performance indicators
     scaler = MinMaxScaler()
     metrics = ['AVG_ARR_DELAY_mins', 'CANCEL_RATE', 'DIVERT_RATE', 'DELAY_PER_FLIGHT']
@@ -29,6 +28,7 @@ def group_delay_scaled(feature, df):
     scaled_metrics = scaler.fit_transform(group[metrics])
     group[scaled_vars] = scaled_metrics
 
+    # Generate composite score with features weighted
     group['COMPOSITE_SCORE'] = (
         .4 * group['S_ARR_DELAY_15'] +
         .3 * group['S_DELAY_PER_FLIGHT'] +
@@ -37,12 +37,16 @@ def group_delay_scaled(feature, df):
     )
 
     top5_worst = group.sort_values('COMPOSITE_SCORE', ascending=False).head(5)
+    print("Top 5 worst: ", feature)
     print(top5_worst)
 
     return group
 
-# Explore Data
-debug_explore = False
+plt.ioff()  # This suppresses ALL plots, including seaborn
+
+### Import and Clean Data ###
+
+# Explore data
 df = pd.read_csv("../../dataSets/airline-delay/Airline_Delay_Cause.csv")
 sample = df[ (df['month'] == 2) & (df['year'] == 2016) ]
 sample = sample.sort_values(['airport'])
@@ -66,7 +70,6 @@ old_carriers = df.carrier_name.value_counts()
 new_carriers = df_dropped.carrier_name.value_counts()
 percent_change_carriers =  ( (old_carriers - new_carriers) / old_carriers ) * 100
 
-
 # Does the dropped data effect specific airports more than others?
 old_airports = df.airport_name.value_counts()
 new_airports = df_dropped.airport_name.value_counts()
@@ -88,20 +91,18 @@ df = df.drop(['month', 'year'], axis=1)
 df = df[['combined_date'] + [col for col in df.columns if col != 'combined_date']]
 df['Year'] = df['combined_date'].dt.year
 
-# Data Exploration 
+### Data Exploration ###
 
 # Heatmap
-# pivot = df.pivot_table(index='carrier_name', columns='Year', values='arr_del15', aggfunc='mean')
-# plt.figure()
-# plt.title('Average Number of Delayed Flights')
-# sns.heatmap(data=pivot, annot=True, cmap='Reds')
-# plt.show()
+pivot = df.pivot_table(index='carrier_name', columns='Year', values='arr_del15', aggfunc='mean')
+plt.figure()
+plt.title('Average Number of Delayed Flights')
+sns.heatmap(data=pivot, annot=True, cmap='Reds')
 
 # Line Plot
-# plt.figure()
-# sns.lineplot(data=df, x='Year', y='arr_del15', hue='carrier')  # Multiple groups
-# plt.tight_layout()
-# plt.show()
+plt.figure()
+sns.lineplot(data=df, x='Year', y='arr_del15', hue='carrier')  # Multiple groups
+plt.tight_layout()
 
 # Plot stacked bars of scaled components
 delay_components = df.groupby('carrier_name')[['carrier_ct', 'weather_ct', 'nas_ct', 'security_ct', 'late_aircraft_ct']].sum()
@@ -116,7 +117,6 @@ plt.xlabel('Scaled Score Contribution')
 plt.ylabel('Airline')
 plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 plt.tight_layout()
-plt.show()
 
 # Focus on arrival dealys to track airline and airport performance
 carrier_group = group_delay_scaled('carrier_name', df).reset_index()
@@ -131,27 +131,19 @@ merge_cols = ['iata_code', 'latitude_deg', 'longitude_deg']
 df_merged = pd.merge(airport_group, df_loc[merge_cols], on='iata_code', how='left')
 
 # Create bubble map
-# fig = px.scatter_geo(
-#         df_merged,
-#         lat='latitude_deg',
-#         lon='longitude_deg',
-#         text='iata_code',
-#         size='COMPOSITE_SCORE',  # Bubble size based on value
-#         color='COMPOSITE_SCORE',       # color gradient
-#         color_continuous_scale='Viridis',  # or 'Plasma', 'Inferno', 'Turbo', etc.
-#         projection='albers usa',
-#         title='Bubble Chart of U.S. Airport Average Delay times from 2013- 2023',
-#         scope='usa'
-#     )
-# fig.show()
+fig = px.scatter_geo(
+        df_merged,
+        lat='latitude_deg',
+        lon='longitude_deg',
+        text='iata_code',
+        size='COMPOSITE_SCORE',  # Bubble size based on value
+        color='COMPOSITE_SCORE',       # color gradient
+        color_continuous_scale='Viridis',  # or 'Plasma', 'Inferno', 'Turbo', etc.
+        projection='albers usa',
+        title='Bubble Chart of U.S. Airport Average Delay times from 2013- 2023',
+        scope='usa'
+    )
 
-#if debug_explore:
-    # # ORD Bar Chart 
-    # dfORD = scaled_df[scaled_df['iata_code'] == 'ORD']
-    # avg_score_per_year = dfORD.groupby('Year')['impact_score'].mean().reset_index()
-    # plt.figure()
-    # plt.title('ORD delay over time')
-    # sns.barplot(x=avg_score_per_year.Year, y = avg_score_per_year.impact_score)
-    # plt.ylabel('Delay Impact Score (scaled)')
-    # plt.show()
+input("Press Enter to close plots and exit...")
+
 
