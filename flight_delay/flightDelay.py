@@ -4,7 +4,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
 import pdb
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
 
 
 def group_delay_scaled(feature, df):
@@ -90,6 +92,7 @@ df['combined_date'] = pd.to_datetime(df['month'].astype(str) + '-' + df['year'].
 df = df.drop(['month', 'year'], axis=1)
 df = df[['combined_date'] + [col for col in df.columns if col != 'combined_date']]
 df['Year'] = df['combined_date'].dt.year
+df['Month'] = df['combined_date'].dt.month
 
 ### Data Exploration ###
 
@@ -122,7 +125,6 @@ plt.tight_layout()
 carrier_group = group_delay_scaled('carrier_name', df).reset_index()
 airport_group = group_delay_scaled('airport', df).reset_index()
 airport_group.rename(columns={'airport': 'iata_code'}, inplace=True)
-
 plt_cols = ['airport_name', 'iata_code', 'latitude_deg', 'longitude_deg', 'COMPOSITE_SCORE']
 
 # Combine lat long data
@@ -144,6 +146,50 @@ fig = px.scatter_geo(
         scope='usa'
     )
 
-input("Press Enter to close plots and exit...")
+### Set up ML Pipeline ###
 
+# Ojbective: Based on the airline, airport, month, and year;
+# how many delays can I expect during that month?
+
+# Setup Categorical features
+le_carrier = LabelEncoder()
+le_airport = LabelEncoder()
+df['carrier_encoded'] = le_carrier.fit_transform(df['carrier'])
+df['airport_encoded'] = le_airport.fit_transform(df['airport'])
+
+# Features
+feature_1 = [   'Month', 'Year', # time 
+                'carrier_encoded', 'airport_encoded', # categorical vals
+                'arr_flights' # volume
+                ]
+
+# Not sure if I should be using cancellations or diversions too...
+feature_2 = [   'Month', 'Year', # time 
+                'carrier_encoded', 'airport_encoded', # categorical vals
+                'arr_cancelled', 'arr_diverted', # cancellations and diversions
+                'arr_flights' # volume
+                ]
+
+feature_set = [feature_1, feature_2]
+
+for feature in feature_set:
+    # Set up train and split
+    X = df[feature]
+    y = df['arr_del15']
+
+    # Split data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, 
+                                                        random_state=42)
+
+    # Fit model
+    model = LogisticRegression()
+    model.fit(X_train, y_train)
+
+    # Make predictions
+    y_pred = model.predict(X_test)
+
+    # Check accuracy
+    accuracy = model.score(X_test, y_test)
+    print("using feature set: ", feature)
+    print(f"Accuracy: {accuracy:.3f}")
 
