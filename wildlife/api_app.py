@@ -5,8 +5,21 @@ import os
 import sqlite3
 from datetime import datetime
 #from cloud_utils import upload_to_gcs
+from google.cloud import storage
+
+
+def upload_to_gcs(bucket_name: str, local_path: str, destination_blob: str) -> str:
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob)
+    blob.upload_from_filename(local_path,
+			      content_type='image/jpg')
+
+    #blob.make_public()  # or use authenticated URLs if preferred
+    #return blob.public_url
 
 app = FastAPI()
+gcs_bucket = "home_wildlife_tracker"
 
 @app.post("/upload")
 async def upload_detection(
@@ -16,15 +29,15 @@ async def upload_detection(
     timestamp: str = Form(...)
 ):
     # Step 1: Save image locally
-    #safe_filename = f"{timestamp.replace(' ', '_')}_{image.filename}"
-    #local_path = os.path.join("images", safe_filename)
-    #os.makedirs("images", exist_ok=True)
+    safe_filename = f"{timestamp.replace(' ', '_')}_{image.filename}"
+    local_path = os.path.join("images", safe_filename)
+    os.makedirs("images", exist_ok=True)
     
-    #with open(local_path, "wb") as buffer:
-    #    shutil.copyfileobj(image.file, buffer)
+    with open(local_path, "wb") as buffer:
+        shutil.copyfileobj(image.file, buffer)
 
     # Step 2: Upload image to GCS
-    #gcs_url = upload_to_gcs(BUCKET_NAME, local_path, f"detections/{safe_filename}")
+    upload_to_gcs(gcs_bucket, local_path, f"detections/{safe_filename}")
 
     # Step 3: Write metadata to SQLite
     conn = sqlite3.connect("detections.db")
@@ -41,7 +54,7 @@ async def upload_detection(
         "filename": image.filename,
         "label": label,
         "confidence": confidence,
-        "timestamp": timestamp,
+        "timestamp": timestamp
     }
 
     return JSONResponse(content=metadata)
