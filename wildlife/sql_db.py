@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS detections (
     filename TEXT,
     label TEXT,
     confidence REAL,
-    timestamp TEXT
+    timestamp TEXT,
+    gcs_url TEXT
 )
 """)
 

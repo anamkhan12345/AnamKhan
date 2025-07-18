@@ -1,10 +1,10 @@
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import shutil
 import os
 import sqlite3
-from datetime import datetime
-#from cloud_utils import upload_to_gcs
+from datetime import datetime, timedelta
 from google.cloud import storage
 
 
@@ -15,8 +15,14 @@ def upload_to_gcs(bucket_name: str, local_path: str, destination_blob: str) -> s
     blob.upload_from_filename(local_path,
 			      content_type='image/jpg')
 
-    #blob.make_public()  # or use authenticated URLs if preferred
-    #return blob.public_url
+    expiration_minutes = 60
+    url = blob.generate_signed_url(
+        version="v4",
+        expiration=timedelta(minutes=expiration_minutes),
+        method="GET",
+    )
+
+    return url
 
 app = FastAPI()
 gcs_bucket = "home_wildlife_tracker"
@@ -37,15 +43,15 @@ async def upload_detection(
         shutil.copyfileobj(image.file, buffer)
 
     # Step 2: Upload image to GCS
-    upload_to_gcs(gcs_bucket, local_path, f"detections/{safe_filename}")
-
+    gcs_url = upload_to_gcs(gcs_bucket, local_path, f"detections/{safe_filename}")
+    breakpoint()
     # Step 3: Write metadata to SQLite
     conn = sqlite3.connect("detections.db")
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO detections (filename, label, confidence, timestamp)
-        VALUES (?, ?, ?, ?)
-    """, (image.filename, label, confidence, timestamp) )
+        INSERT INTO detections (filename, label, confidence, timestamp, gcs_url)
+        VALUES (?, ?, ?, ?, ?)
+    """, (image.filename, label, confidence, timestamp, gcs_url) )
     conn.commit()
     conn.close()
 
@@ -54,7 +60,34 @@ async def upload_detection(
         "filename": image.filename,
         "label": label,
         "confidence": confidence,
-        "timestamp": timestamp
+        "timestamp": timestamp,
+        "gcs_url": gcs_url
     }
 
     return JSONResponse(content=metadata)
+
+
+@app.get("/detections")
+def get_detections():
+    conn = sqlite3.connect("detections.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT label, confidence, timestamp, gcs_url FROM detections ORDER BY timestamp DESC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {
+            "label": row[0],
+            "confidence": row[1],
+            "timestamp": row[2],
+            "gcs_url": row[3]
+        }
+        for row in rows
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # or ["http://localhost:5173"]
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
