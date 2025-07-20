@@ -25,7 +25,7 @@ def read_vid_example(vid_file_path):
     cv.destroyAllWindows() # closes all windows
 
 
-def rescale_frame(frame, scale=.75):
+def rescale_frame(frame, scale=.5):
     # works for images, videos, live video
     width = int(frame.shape[1] * scale) # current frame width * rescale factor
     height = int(frame.shape[0] * scale) # current frame height * rescale factor
@@ -71,7 +71,40 @@ def draw_blank_example():
     cv.imshow('draw', blank)
     cv.waitKey(0)
 
+def basic_functions_example(img_file_path):
+    img = cv.imread(img_file_path)
+    img = rescale_frame(img) # You should rescale before any edge detection
+
+    # 1. Converting to gray scale
+    # benefits are it reduces memory usage and simplified feature extraction
+    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+
+    # 2. Blur 
+    # Removes some of noise in image
+    blur = cv.GaussianBlur(img, (7,7), cv.BORDER_DEFAULT)
+
+    # 3. Edge Cascade (find edges in image)
+    canny = cv.Canny(img, 125, 175) # reduce amount of images by applying blur
+
+    # 4. Dilate an image
+    # Important for filling gaps/holes to connect nearby objects 
+    # that are treats as one unit. Helpful when edge detection creates
+    # fragmented results. Also usefulf for noise removal and object expansion
+    dilate = cv.dilate(canny, (7,7), iterations=5)
+
+    # 5. Eroding
+    eroded = cv.erode(dilate, (7,7), iterations=5)
+
+    # 6. Resize
+    resized = cv.resize(img, (500,500), interpolation=cv.INTER_AREA) # Inter area for making it smaller, inter linear or cubic for making bigger
+
+    # 7. Cropping
+    cropped = img[50:200, 200:400]
+    
+    cv.imshow('car', cropped)
+    cv.waitKey(0)
+
 
 
 haas = 'photos/haas.jpg'
-draw_blank_example()
+basic_functions_example(haas)
