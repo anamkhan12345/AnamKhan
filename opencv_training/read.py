@@ -1,12 +1,6 @@
 import cv2 as cv
 import numpy as np
 
-# Read Images
-# img = cv.imread('Photos/haas.jpg')
-# cv.imshow('car', img)
-# cv.waitKey(0)
-
-# Read Videos
 
 def read_vid_example(vid_file_path):
     cap = cv.VideoCapture(vid_file_path) # using webcam would be 0
