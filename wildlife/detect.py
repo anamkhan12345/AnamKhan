@@ -94,7 +94,8 @@ def run(model: str, camera_id: int, width: int, height: int, num_threads: int,
     # Initialize the object detection model
     param_path = 'model/model.ncnn.param'
     bin_path = 'model/model.ncnn.bin'
-    detector = ncnn_detect(param_path, bin_path) 
+    #detector = ncnn_detect(param_path, bin_path) 
+    detector = YOLO('yolo11n_ncnn_model')
 
     # Continuously capture images from the camera and run inference
     while cap.isOpened():
@@ -108,10 +109,10 @@ def run(model: str, camera_id: int, width: int, height: int, num_threads: int,
         image = cv2.flip(image, 1)
 
         # Convert the image from BGR to RGB as required by the TFLite model.
-        # rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 	# Get Detection
-        detection_result = detector.detect(image)
+        detection_result = detector(rgb_image)
 
 
         # Display frame
