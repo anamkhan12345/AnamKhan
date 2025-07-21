@@ -20,19 +20,46 @@ from ultralytics import YOLO
 
 import cv2
 import utils
+import ncnn
+import numpy as np
 
-def yolo_11_ncnn():
 
-    # Load a YOLO11n PyTorch model
-    model = YOLO("yolo11n.pt")
+class ncnn_detect():
+    def __init__(self, param_path, bin_path):
+        
+        # Load a YOLO11n PyTorch model
+        self.net = ncnn.Net()
+        self.net.load_param(param_path)
+        self.net.load_model(bin_path)
 
-    # Export the model to NCNN format
-    model.export(format="ncnn")  # creates 'yolo11n_ncnn_model'
+        # Set threading and optimization options for Raspberry Pi
+        self.net.opt.use_vulkan_compute = False  # Disable Vulkan on RPi
+        self.net.opt.use_fp16_packed = False     # Disable FP16 on RPi
+        self.net.opt.use_fp16_storage = False
+        self.net.opt.use_fp16_arithmetic = False
+        self.net.opt.use_packing_layout = False
+        self.net.opt.num_threads = 1
 
-    # Load the exported NCNN model
-    ncnn_model = YOLO("yolo11n_ncnn_model")
+    def detect(self, frame):
+        h, w = frame.shape[:2]
 
-    return ncnn_model 
+        # Preprocess
+        img_resized = cv2.resize(frame, (640, 640))
+        
+        # Convert BGR to RGB and normalize
+        img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
+        img_float = img_rgb.astype(np.float32) / 255.0
+        
+        # Create NCNN Mat from numpy array
+        mat_in = ncnn.Mat(img_float)
+
+        # Inference
+        ex = self.net.create_extractor()
+        ex.input("in0", mat_in)  # Changed from "images" to "in0"
+        ret, mat_out = ex.extract("out0")
+
+        return np.array(mat_out)
+
 
 def run(model: str, camera_id: int, width: int, height: int, num_threads: int,
         enable_edgetpu: bool) -> None:
@@ -65,7 +92,9 @@ def run(model: str, camera_id: int, width: int, height: int, num_threads: int,
     fps_avg_frame_count = 10
 
     # Initialize the object detection model
-    detector = yolo_11_ncnn() 
+    param_path = 'model/model.ncnn.param'
+    bin_path = 'model/model.ncnn.bin'
+    detector = ncnn_detect(param_path, bin_path) 
 
     # Continuously capture images from the camera and run inference
     while cap.isOpened():
@@ -79,10 +108,11 @@ def run(model: str, camera_id: int, width: int, height: int, num_threads: int,
         image = cv2.flip(image, 1)
 
         # Convert the image from BGR to RGB as required by the TFLite model.
-        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 	# Get Detection
-        detection_result = detector(image)
+        detection_result = detector.detect(image)
+
 
         # Display frame
         annotated_frame = detection_result[0].plot()
