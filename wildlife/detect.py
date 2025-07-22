@@ -29,7 +29,6 @@ def basic_model(model_path):
     model = YOLO(model_path)
 
     # Export the model to NCNN format
-    breakpoint()
     file,_ = os.path.splitext(model_path)
     expected_file_path = file +"_ncnn_model"
     if not os.path.exists(expected_file_path):
@@ -40,7 +39,7 @@ def basic_model(model_path):
 
     return ncnn_model
 
-def run(camera_id=0, width=640, height=640) -> None:
+def run(model='models/best.pt', camera_id=0, width=640, height=640) -> None:
     """Continuously run inference on images acquired from the camera.
 
     Args:
@@ -68,7 +67,7 @@ def run(camera_id=0, width=640, height=640) -> None:
     fps_avg_frame_count = 10
 
     # Initialize the object detection model
-    detector = basic_model('best.pt')
+    detector = basic_model(model)
 
     # Continuously capture images from the camera and run inference
     while cap.isOpened():
