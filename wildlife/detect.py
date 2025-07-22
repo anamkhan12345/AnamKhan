@@ -17,52 +17,30 @@ import sys
 import time
 import subprocess
 from ultralytics import YOLO
-
+import os
 import cv2
 import utils
 import ncnn
 import numpy as np
 
 
-class ncnn_detect():
-    def __init__(self, param_path, bin_path):
-        
-        # Load a YOLO11n PyTorch model
-        self.net = ncnn.Net()
-        self.net.load_param(param_path)
-        self.net.load_model(bin_path)
+def basic_model(model_path):
+    # Load the YOLO11 model
+    model = YOLO(model_path)
 
-        # Set threading and optimization options for Raspberry Pi
-        self.net.opt.use_vulkan_compute = False  # Disable Vulkan on RPi
-        self.net.opt.use_fp16_packed = False     # Disable FP16 on RPi
-        self.net.opt.use_fp16_storage = False
-        self.net.opt.use_fp16_arithmetic = False
-        self.net.opt.use_packing_layout = False
-        self.net.opt.num_threads = 1
+    # Export the model to NCNN format
+    breakpoint()
+    file,_ = os.path.splitext(model_path)
+    expected_file_path = file +"_ncnn_model"
+    if not os.path.exists(expected_file_path):
+        model.export(format="ncnn")  # creates '/yolo11n_ncnn_model'
 
-    def detect(self, frame):
-        h, w = frame.shape[:2]
+    # Load the exported NCNN model
+    ncnn_model = YOLO(expected_file_path)
 
-        # Preprocess
-        img_resized = cv2.resize(frame, (640, 640))
-        
-        # Convert BGR to RGB and normalize
-        img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
-        img_float = img_rgb.astype(np.float32) / 255.0
-        
-        # Create NCNN Mat from numpy array
-        mat_in = ncnn.Mat(img_float)
+    return ncnn_model
 
-        # Inference
-        ex = self.net.create_extractor()
-        ex.input("in0", mat_in)  # Changed from "images" to "in0"
-        ret, mat_out = ex.extract("out0")
-
-        return np.array(mat_out)
-
-
-def run(model: str, camera_id: int, width: int, height: int, num_threads: int,
-        enable_edgetpu: bool) -> None:
+def run(camera_id=0, width=640, height=640) -> None:
     """Continuously run inference on images acquired from the camera.
 
     Args:
@@ -70,8 +48,6 @@ def run(model: str, camera_id: int, width: int, height: int, num_threads: int,
       camera_id: The camera id to be passed to OpenCV.
       width: The width of the frame captured from the camera.
       height: The height of the frame captured from the camera.
-      num_threads: The number of CPU threads to run the model.
-      enable_edgetpu: True/False whether the model is a EdgeTPU model.
     """
 
     # Variables to calculate FPS
@@ -92,10 +68,7 @@ def run(model: str, camera_id: int, width: int, height: int, num_threads: int,
     fps_avg_frame_count = 10
 
     # Initialize the object detection model
-    param_path = 'model/model.ncnn.param'
-    bin_path = 'model/model.ncnn.bin'
-    #detector = ncnn_detect(param_path, bin_path) 
-    detector = YOLO('yolo11n_ncnn_model')
+    detector = basic_model('best.pt')
 
     # Continuously capture images from the camera and run inference
     while cap.isOpened():
@@ -128,48 +101,7 @@ def run(model: str, camera_id: int, width: int, height: int, num_threads: int,
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument(
-        '--model',
-        help='Path of the object detection model.',
-        required=False,
-        default='efficientdet_lite0.tflite')
-    parser.add_argument(
-        '--cameraId',
-        help='Id of camera.',
-        required=False,
-        type=int,
-        default=0)
-    parser.add_argument(
-        '--frameWidth',
-        help='Width of frame to capture from camera.',
-        required=False,
-        type=int,
-        default=640)
-    parser.add_argument(
-        '--frameHeight',
-        help='Height of frame to capture from camera.',
-        required=False,
-        type=int,
-        default=480)
-    parser.add_argument(
-        '--numThreads',
-        help='Number of CPU threads to run the model.',
-        required=False,
-        type=int,
-        default=4)
-    parser.add_argument(
-        '--enableEdgeTPU',
-        help='Whether to run the model on EdgeTPU.',
-        action='store_true',
-        required=False,
-        default=False)
-    args = parser.parse_args()
-
-    run(args.model, int(args.cameraId), args.frameWidth, args.frameHeight,
-        int(args.numThreads), bool(args.enableEdgeTPU))
-
+    run()
 
 if __name__ == '__main__':
     main()
