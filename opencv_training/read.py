@@ -37,6 +37,8 @@ def rescale_example(img_file_path):
 
 def change_res(width, height, capture):
     # Live video only - capture is the cv object containing the frames
+    # requesting the camera or video device to provide frames at
+    # a specific resolution. 
     capture.set(3,width)
     capture.set(4,height)
 
@@ -45,9 +47,7 @@ def draw_blank_example():
 
     # blank image
     blank = np.zeros((500,500, 3), dtype='uint8') # (height, width, color channels), uint8 is img dtype
-
     blank[:] = 0,0,0 # select all pixels and make them some RGB color
-
     blank[200:300, 300:400] = 0,0,225
 
     # Draw rectangle
@@ -98,7 +98,55 @@ def basic_functions_example(img_file_path):
     cv.imshow('car', cropped)
     cv.waitKey(0)
 
+def translate(img_path, x, y):
+    # -x -> left
+    # +x -> right
+    # -y -> up
+    # +y -> down
+    img = cv.imread(img_path)
+    dimensions = (480,480)
+    img = cv.resize(img, dimensions, interpolation=cv.INTER_AREA)
+    cv.imshow('org', img)
+    transMat = np.float32([[1,0,x], [0,1,y]])
+    dimensions = (img.shape[1], img.shape[0])
+    return cv.warpAffine(img, transMat, dimensions)
 
+def translt_ex(img):
+    ex = translate(img, 100, 100)
+    cv.imshow('translated', ex)
+    cv.waitKey(0)
 
-haas = 'photos/haas.jpg'
-basic_functions_example(haas)
+def rotate(img, angle, rotPoint=None):
+    (height, width) = img.shape[:2]
+
+    if rotPoint is None:
+        rotPoint = (width //2, height //2)
+    
+    rotMat = cv.getRotationMatrix2D(rotPoint, angle, 1.0)
+    dimensions = (width, height)
+
+    return cv.warpAffine(img, rotMat, dimensions)
+
+def rotate_ex(img_path):
+    img = cv.imread(img_path)
+    dimensions = (480,480)
+    img = cv.resize(img, dimensions, interpolation=cv.INTER_AREA)
+    cv.imshow('org', img)
+    rot_img = rotate(img, 30)
+    cv.imshow('rot', rot_img)
+    cv.waitKey(0)
+
+def flip_ex(img_path):
+    img = cv.imread(img_path)
+    dimensions = (480,480)
+    img = cv.resize(img, dimensions, interpolation=cv.INTER_AREA)
+    cv.imshow('org', img)
+    # 0: Flips the image vertically (around the x-axis).
+    # 1: Flips the image horizontally (around the y-axis).
+    # -1: Flips the image both vertically and horizontally.
+    flip = cv.flip(img, 0)
+    cv.imshow('flip', flip)
+    cv.waitKey(0)
+
+haas = 'photos/everest.jpg'
+flip_ex(haas)
