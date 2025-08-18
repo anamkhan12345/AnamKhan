@@ -148,5 +148,112 @@ def flip_ex(img_path):
     cv.imshow('flip', flip)
     cv.waitKey(0)
 
-haas = 'photos/everest.jpg'
-flip_ex(haas)
+
+def countours_ex(img_path):
+    # boundaries of the object, not the same as edges
+    img = cv.imread(img_path)
+    blank = np.zeros(img.shape, dtype='uint8')
+    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    cv.imshow('gray', gray)
+
+    # Blur to reduce the amount of noise and sharpness in an image
+    blur = cv.GaussianBlur(gray, (5,5), cv.BORDER_DEFAULT)
+    cv.imshow('blur', blur)
+
+    # Contour method 1 - Canny (pref)
+    canny = cv.Canny(blur, 100, 175)
+    cv.imshow('canny', canny)
+
+    # Contour method 2 - Thresholding
+    ret, thresh = cv.threshold(gray, 100, 175, cv.THRESH_BINARY) # tries to "binarize" the image based on thresholds
+    cv.imshow('thresh', thresh)
+
+    contours, hierarchies = cv.findContours(thresh, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
+    print(len(contours))
+
+    # Use canny method first instead of thresholding and then finding contours
+    # Canny is simplest and effective
+
+    cv.drawContours(blank, contours, -1, (0,0,255), 2)
+    cv.imshow('Blank', blank)
+    cv.waitKey(0)
+
+
+def color_spaces(img_path):
+    # more info: https://opencv.org/blog/color-spaces-in-opencv/
+    # BGR is the default for openCV
+    # RGB is what matplotlib would take
+
+    img = cv.imread(img_path)
+    
+    # BGR to Grayscale
+    # help show pixel intensity clearer, more efficient for storage and processing
+    # can't convert gray scale to HSV directly -> have to go back to BGR then hsv
+    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY) 
+    cv.imshow('gray', gray)
+
+    # BGR to HSV - hue saturation value
+    # simplifies the process of isolating specific colors within an image, better for segmentation
+    hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV) 
+    cv.imshow('hsv', hsv)
+
+    # BGR to L*a*b
+    # Color-based object recognition and segmentation
+    lab = cv.cvtColor(img, cv.COLOR_BGR2LAB)
+    cv.imshow('lab', lab)
+
+    # BGR to RGB
+    rgb = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+    cv.imshow('rgb', rgb)
+
+    cv.waitKey(0)
+
+
+def color_channels(img_path):
+    img = cv.imread(img_path)
+    b,g,r = cv.split(img)
+    blank = np.zeros(img.shape[:2], dtype='uint8')
+    blue = cv.merge([b, blank, blank])
+    green = cv.merge([blank, g, blank])
+    red = cv.merge([blank, blank, r])
+
+    cv.imshow('b', blue)
+    cv.imshow('g', green)
+    cv.imshow('r', red)
+    cv.imshow('og', img)
+
+    merged_img = cv.merge([b,g,r])
+    cv.imshow('mereged', merged_img)
+
+    cv.waitKey(0)
+
+
+def blurring(img_path):
+    img = cv.imread(img_path)
+    cv.imshow('img', img)
+
+
+
+    cv.waitKey(0)
+
+
+def bitwise(img_path):
+    img = cv.imread(img_path)
+    cv.imshow('img', img)
+
+
+
+    cv.waitKey(0)
+
+
+def masking(img_path):
+    img = cv.imread(img_path)
+    cv.imshow('img', img)
+
+
+
+    cv.waitKey(0)
+
+
+img = 'photos/Prisonmike.jpg'
+color_channels(img)
